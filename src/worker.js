@@ -14,11 +14,11 @@ const STATIC = {
   "/index.html": [INDEX, "text/html; charset=utf-8", "no-cache"],
   "/sw.js": [SW, "text/javascript; charset=utf-8", "no-cache"],
   "/manifest.webmanifest": [MANIFEST, "application/manifest+json", "public, max-age=3600"],
-  "/icon-192.png": [ICON192, "image/png", "public, max-age=86400"],
-  "/icon-512.png": [ICON512, "image/png", "public, max-age=86400"],
-  "/icon-maskable-512.png": [ICONMASK, "image/png", "public, max-age=86400"],
-  "/apple-touch-icon.png": [APPLE, "image/png", "public, max-age=86400"],
-  "/badge-96.png": [BADGE, "image/png", "public, max-age=86400"],
+  "/icon-192.png": [ICON192, "image/png", "public, max-age=3600"],
+  "/icon-512.png": [ICON512, "image/png", "public, max-age=3600"],
+  "/icon-maskable-512.png": [ICONMASK, "image/png", "public, max-age=3600"],
+  "/apple-touch-icon.png": [APPLE, "image/png", "public, max-age=3600"],
+  "/badge-96.png": [BADGE, "image/png", "public, max-age=3600"],
 };
 function serveStatic(url) {
   const hit = STATIC[url.pathname] || STATIC["/"];
