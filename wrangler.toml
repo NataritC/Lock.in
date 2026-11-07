@@ -2,16 +2,21 @@ name = "lock-in"
 main = "src/worker.js"
 compatibility_date = "2026-10-01"
 
-[assets]
-directory = "./public"
-binding = "ASSETS"
-not_found_handling = "single-page-application"
-run_worker_first = ["/api/*"]
+# The app's files are bundled into the Worker and served by src/worker.js.
+[[rules]]
+type = "Text"
+globs = ["**/*.html", "**/*.webmanifest", "**/sw.js"]
+fallthrough = false
+
+[[rules]]
+type = "Data"
+globs = ["**/*.png"]
+fallthrough = false
 
 [[d1_databases]]
 binding = "DB"
 database_name = "lock-in"
-database_id = "REPLACE_WITH_D1_ID"
+database_id = "b82626ad-7b6c-433f-9dde-ea6730ca12fb"
 
 # Times are UTC. Bangkok is UTC+7:
 #   01:00 UTC = 08:00 Bangkok -> morning summary of yesterday

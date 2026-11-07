@@ -5,14 +5,16 @@ Calorie, protein, sodium and added-sugar tracker for a fat-loss cut, with phone 
 - **8:00 am**: yesterday's summary
 - **8:30 pm**: a check-in when you're short on protein or calories, with foods sized to close the gap
 
-Runs entirely on Cloudflare: Workers (API, scheduled pushes), D1 (food log), static assets (the app).
+Live at **https://lock-in.natarit.workers.dev**
+
+Runs entirely on Cloudflare: one Worker (serves the app, API and scheduled pushes) and D1 (food log). The app's files in `public/` are bundled into the Worker.
 AI features (type ingredients, photo scan, day review) are optional and use the Anthropic API.
 
 ## Deploy
 
 ```bash
 npm install
-npx wrangler d1 create lock-in            # copy the database_id into wrangler.toml
+npx wrangler d1 create lock-in            # only for a fresh account; copy the database_id into wrangler.toml
 npm run db:init
 npm run vapid                             # prints VAPID_PUBLIC_KEY and VAPID_PRIVATE_JWK
 npx wrangler secret put APP_PASSCODE

@@ -1,5 +1,30 @@
 // Lock In: API, AI proxy, Web Push and scheduled check-ins on Cloudflare Workers + D1.
-// Static files in /public are served by the assets binding; only /api/* reaches this code.
+// The app's static files are bundled into the Worker (see [[rules]] in wrangler.toml).
+import INDEX from "../public/index.html";
+import SW from "../public/sw.js";
+import MANIFEST from "../public/manifest.webmanifest";
+import ICON192 from "../public/icon-192.png";
+import ICON512 from "../public/icon-512.png";
+import ICONMASK from "../public/icon-maskable-512.png";
+import APPLE from "../public/apple-touch-icon.png";
+import BADGE from "../public/badge-96.png";
+
+const STATIC = {
+  "/": [INDEX, "text/html; charset=utf-8", "no-cache"],
+  "/index.html": [INDEX, "text/html; charset=utf-8", "no-cache"],
+  "/sw.js": [SW, "text/javascript; charset=utf-8", "no-cache"],
+  "/manifest.webmanifest": [MANIFEST, "application/manifest+json", "public, max-age=3600"],
+  "/icon-192.png": [ICON192, "image/png", "public, max-age=86400"],
+  "/icon-512.png": [ICON512, "image/png", "public, max-age=86400"],
+  "/icon-maskable-512.png": [ICONMASK, "image/png", "public, max-age=86400"],
+  "/apple-touch-icon.png": [APPLE, "image/png", "public, max-age=86400"],
+  "/badge-96.png": [BADGE, "image/png", "public, max-age=86400"],
+};
+function serveStatic(url) {
+  const hit = STATIC[url.pathname] || STATIC["/"];
+  const [body, type, cache] = hit;
+  return new Response(body, { headers: { "content-type": type, "cache-control": cache, "x-content-type-options": "nosniff" } });
+}
 
 const json = (data, status = 200, headers = {}) =>
   new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json", ...headers } });
@@ -170,7 +195,7 @@ export default {
       try { return await api(req, env, url); }
       catch (e) { return json({ error: "Server error" }, 500); }
     }
-    return env.ASSETS.fetch(req);
+    return serveStatic(url);
   },
   async scheduled(event, env, ctx) {
     if (!env.VAPID_PRIVATE_JWK) return;
