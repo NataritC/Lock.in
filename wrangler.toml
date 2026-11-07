@@ -1,0 +1,32 @@
+name = "lock-in"
+main = "src/worker.js"
+compatibility_date = "2026-10-01"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "lock-in"
+database_id = "REPLACE_WITH_D1_ID"
+
+# Times are UTC. Bangkok is UTC+7:
+#   01:00 UTC = 08:00 Bangkok -> morning summary of yesterday
+#   13:30 UTC = 20:30 Bangkok -> evening protein / calorie check-in
+[triggers]
+crons = ["0 1 * * *", "30 13 * * *"]
+
+[vars]
+TZ_OFFSET_MIN = "420"
+DAY_START_HOUR = "6"
+AI_MODEL = "claude-sonnet-5-5"
+# Secrets (set with `wrangler secret put NAME`, never commit them):
+#   APP_PASSCODE        passcode to open the app
+#   SESSION_SECRET      random string used to sign the login cookie
+#   VAPID_PUBLIC_KEY    from `npm run vapid`
+#   VAPID_PRIVATE_JWK   from `npm run vapid`
+#   VAPID_SUBJECT       mailto: or https: contact for push services
+#   ANTHROPIC_API_KEY   optional; turns on Type it, Photo and reviews

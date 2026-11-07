@@ -1,0 +1,15 @@
+{
+  "name": "lock-in",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Lock In: calorie, macro, sodium and sugar tracker with evening push reminders. Runs on Cloudflare Workers + D1.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:init": "wrangler d1 execute lock-in --remote --file=schema.sql",
+    "vapid": "node scripts/vapid.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "4.152.0"
+  }
+}
