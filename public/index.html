@@ -355,8 +355,8 @@ async function connect(){
   }catch(e){$("syncState").textContent="Offline. Showing what's saved on this device."}
   finally{connected=true;renderNotif();if(!ME&&modalKind==="login")return;handleDeepLinks();checkPopups()}
 }
-function applyFeatures(){scan.off=!ME?.ai;if(panel&&!ME?.ai&&panel.tab!=="num"){panel.tab="num";renderPanel()}}
-const defaultTab=()=>ME?.ai?"type":"num";
+function applyFeatures(){scan.off=!ME?.ai;if(panel)renderPanel()}
+const defaultTab=()=>"type";
 async function openDay(k){day=k;entries=(await load("log-"+k))||[];render()}
 
 /* ---------- login ---------- */
@@ -443,8 +443,103 @@ const RULES=`Use standard nutrition data (USDA-style values).
 Weights: for meat, fish and minced meat assume RAW weight unless the user says cooked (people weigh meat from the pack). For rice, pasta and noodles assume COOKED weight unless the user says raw, dry or uncooked. Minced meat with no fat % given: assume about 20% fat. Put raw/cooked in "amount", e.g. "300 g raw".
 Sodium: include salt, fish sauce, soy sauce, seasoning powder, stock cubes and sauces mentioned; for restaurant or street food include typical seasoning.
 Added sugar: sugar added in cooking or manufacturing, syrups, sweetened drinks, condensed milk. Natural sugar in plain fruit, vegetables and plain milk counts as 0.`;
+/* ---------- built-in food list: works without AI ---------- */
+/* per 100 g (or 100 ml): [name, aliases, kcal, protein, carbs, fat, sodium mg, added sugar g, extras]
+   extras: piece = grams per piece, tbsp/cup/can/pack/bottle/scoop/slice = grams, meat = weighed raw by default */
+const FOOD_DB=[
+ ["Lean pork mince (10% fat)",["lean minced pork","lean pork mince","lean ground pork","lean mince","หมูสับไม่ติดมัน"],176,20,0,10,57,0,{meat:1}],
+ ["Pork mince",["minced pork","pork mince","ground pork","mince pork","หมูสับ","mince"],263,17,0,21,56,0,{meat:1}],
+ ["Pork belly",["pork belly","หมูสามชั้น"],518,9.3,0,53,32,0,{meat:1}],
+ ["Lean pork",["pork loin","pork tenderloin","lean pork","pork slice","pork chop","pork","หมู"],143,21,0,6,50,0,{meat:1}],
+ ["Chicken breast",["chicken breast","อกไก่","chicken"],120,22.5,0,2.6,45,0,{meat:1}],
+ ["Chicken thigh, skinless",["chicken thigh","น่องไก่","สะโพกไก่"],121,19.7,0,4.1,95,0,{meat:1}],
+ ["Lean beef",["ground beef","minced beef","beef mince","beef","เนื้อวัว"],176,20,0,10,66,0,{meat:1}],
+ ["Salmon",["salmon","แซลมอน"],208,20,0,13,59,0,{meat:1}],
+ ["Canned tuna in water",["canned tuna","tuna","ทูน่า"],116,26,0,1,330,0,{can:110}],
+ ["Shrimp",["shrimp","prawns","prawn","กุ้ง"],85,20,0,0.5,119,0,{meat:1}],
+ ["White fish",["tilapia","white fish","fish","ปลา"],96,20,0,1.7,52,0,{meat:1}],
+ ["Firm tofu",["tofu","เต้าหู้"],144,17,3,9,14,0,{}],
+ ["Egg white",["egg whites","egg white","ไข่ขาว"],52,11,0.7,0.2,166,0,{piece:33}],
+ ["Egg",["eggs","egg","ไข่"],143,12.6,0.7,9.5,142,0,{piece:50}],
+ ["White rice, dry",["dry rice","uncooked rice","raw rice"],365,7.1,80,0.7,5,0,{cup:185}],
+ ["Brown rice, cooked",["brown rice","ข้าวกล้อง"],112,2.3,23.5,0.8,5,0,{cup:195}],
+ ["Sticky rice, cooked",["sticky rice","glutinous rice","ข้าวเหนียว"],97,2,21,0.2,5,0,{cup:175}],
+ ["White rice, cooked",["jasmine rice","white rice","rice","ข้าวสวย","ข้าว"],130,2.7,28,0.3,1,0,{cup:160}],
+ ["Instant noodles",["instant noodles","instant noodle","mama","มาม่า"],470,9.5,62,20,2700,0,{pack:60}],
+ ["Rice noodles, cooked",["rice noodles","rice noodle","เส้นเล็ก","เส้นใหญ่","sen lek"],108,1.8,24,0.2,19,0,{cup:175}],
+ ["Egg noodles, cooked",["egg noodles","egg noodle","บะหมี่"],138,4.5,25,2,5,0,{cup:160}],
+ ["Pasta, cooked",["spaghetti","pasta","macaroni"],158,5.8,31,0.9,1,0,{cup:140}],
+ ["Whole wheat bread",["whole wheat bread","wholemeal bread","brown bread"],252,12,43,3.5,450,5,{slice:30,piece:30}],
+ ["White bread",["white bread","toast","bread","ขนมปัง"],265,9,49,3.2,490,5,{slice:28,piece:28}],
+ ["Oats, dry",["oatmeal","oats","ข้าวโอ๊ต"],389,16.9,66,6.9,2,0,{cup:80}],
+ ["Potato, boiled",["potatoes","potato","มันฝรั่ง"],87,1.9,20,0.1,4,0,{piece:170}],
+ ["Sweet potato",["sweet potatoes","sweet potato","มันหวาน","มันเทศ"],90,2,21,0.2,36,0,{piece:130}],
+ ["Banana",["bananas","banana","กล้วย"],89,1.1,23,0.3,1,0,{piece:118}],
+ ["Apple",["apples","apple","แอปเปิ้ล"],52,0.3,14,0.2,1,0,{piece:182}],
+ ["Strawberries",["strawberries","strawberry","สตรอเบอร์รี่"],32,0.7,7.7,0.3,1,0,{piece:12,cup:150}],
+ ["Mango",["mango","มะม่วง"],60,0.8,15,0.4,1,0,{piece:200}],
+ ["Broccoli",["broccoli","บรอกโคลี"],34,2.8,7,0.4,33,0,{cup:90}],
+ ["Cabbage",["cabbage","กะหล่ำ"],25,1.3,6,0.1,18,0,{cup:90}],
+ ["Cucumber",["cucumber","แตงกวา"],15,0.7,3.6,0.1,2,0,{piece:200}],
+ ["Mixed vegetables",["vegetables","veggies","veg","salad","morning glory","ผักบุ้ง","ผัก"],30,2,5,0.3,30,0,{cup:100}],
+ ["Avocado",["avocado","อะโวคาโด"],160,2,8.5,14.7,7,0,{piece:150}],
+ ["Olive oil",["olive oil"],884,0,0,100,2,0,{tbsp:13.5,tsp:4.5}],
+ ["Cooking oil",["vegetable oil","cooking oil","oil","น้ำมัน"],884,0,0,100,0,0,{tbsp:13.5,tsp:4.5}],
+ ["Butter",["butter","เนย"],717,0.9,0.1,81,11,0,{tbsp:14,tsp:5}],
+ ["Peanut butter",["peanut butter"],588,25,20,50,430,9,{tbsp:16,tsp:5}],
+ ["Almonds",["almonds","almond","อัลมอนด์"],579,21,22,50,1,0,{piece:1.2}],
+ ["Whey protein",["whey protein","protein powder","whey","เวย์"],400,80,10,5,200,3,{scoop:30}],
+ ["Greek yogurt, nonfat",["greek yogurt","greek yoghurt","yogurt","yoghurt","โยเกิร์ต"],59,10,3.6,0.4,36,0,{cup:170}],
+ ["Cheddar cheese",["cheese","ชีส"],403,25,1.3,33,621,0,{slice:20}],
+ ["Soy milk, unsweetened",["unsweetened soy milk","soy milk","soymilk","นมถั่วเหลือง"],36,3.3,1.2,1.8,40,0,{box:250,cup:240}],
+ ["Milk",["low fat milk","milk","นม"],50,3.3,4.8,2,44,0,{box:200,cup:240}],
+ ["Fish sauce",["fish sauce","nam pla","น้ำปลา"],35,5,3.6,0,7850,0,{tbsp:18,tsp:6}],
+ ["Soy sauce",["soy sauce","ซีอิ๊ว"],53,8,4.9,0.6,5490,0,{tbsp:16,tsp:5.3}],
+ ["Oyster sauce",["oyster sauce","ซอสหอยนางรม"],51,1.4,11,0.3,2730,10,{tbsp:18,tsp:6}],
+ ["Seasoning powder",["seasoning powder","seasoning","ผงปรุงรส","รสดี"],200,10,30,2,20000,0,{tbsp:10,tsp:3.5}],
+ ["Salt",["salt","เกลือ"],0,0,0,0,38758,0,{tbsp:18,tsp:6}],
+ ["Sugar",["sugar","น้ำตาล"],387,0,100,0,1,100,{tbsp:12.5,tsp:4.2}],
+ ["Honey",["honey","น้ำผึ้ง"],304,0.3,82,0,4,82,{tbsp:21,tsp:7}],
+ ["Sweetened condensed milk",["condensed milk","นมข้น"],321,7.9,54,8.7,127,50,{tbsp:19,tsp:6.5}],
+ ["Thai milk tea",["thai milk tea","thai tea","milk tea","cha yen","ชาเย็น","ชานม"],70,0.4,13,1.8,15,9,{cup:500,bottle:500}],
+ ["Ichitan green tea",["ichitan","green tea","oishi","ชาเขียว"],21,0,5.2,0,24,2.9,{bottle:420}],
+ ["Zero-sugar soda",["coke zero","pepsi max","zero sugar","diet coke","coke no sugar"],0,0,0,0,10,0,{can:325,bottle:500}],
+ ["Soda",["coca cola","coke","pepsi","sprite","fanta","soda","cola","โค้ก"],42,0,10.6,0,4,10.6,{can:325,bottle:500}],
+ ["Coffee, black",["black coffee","americano","coffee","กาแฟ"],1,0.1,0,0,2,0,{cup:240}],
+];
+const FOOD_INDEX=FOOD_DB.flatMap(([name,al,kcal,p,c,f,na,sug,x])=>al.map(a=>({a,food:{name,kcal,p,c,f,na,sug,...x}}))).sort((m,n)=>n.a.length-m.a.length);
+const NUMWORD={a:1,an:1,one:1,two:2,three:3,four:4,five:5,six:6,half:0.5,"½":0.5};
+function localNutrition(text){
+  const parts=String(text).toLowerCase().replace(/½/g," 0.5 ").split(/,|\+|&|\n|\band\b|\bwith\b/).map(s=>s.trim()).filter(Boolean);
+  const items=[], unknown=[];
+  for(const part of parts){
+    const hit=FOOD_INDEX.find(x=>part.includes(x.a));
+    if(!hit){unknown.push(part);continue}
+    let food=hit.food;
+    if(food.name==="Pork mince"&&/lean|10 ?%|ไม่ติดมัน/.test(part)) food=FOOD_INDEX.find(x=>x.a==="lean pork mince").food;
+    if(food.name==="White rice, cooked"&&/\b(dry|raw|uncooked)\b/.test(part)) food=FOOD_INDEX.find(x=>x.a==="dry rice").food;
+    const m=part.match(/(\d+(?:\.\d+)?|\b(?:a|an|one|two|three|four|five|six|half)\b)\s*(kg|kilos?|grams?|gr|g|ml|millilit(?:re|er)s?|l|lit(?:re|er)s?|cups?|tbsps?|tablespoons?|tsps?|teaspoons?|slices?|scoops?|cans?|pieces?|pcs?|bottles?|packs?|packets?|boxe?s?|plates?)?\b/);
+    let qty=m?(NUMWORD[m[1]]??Number(m[1])):null, unit=m?.[2]||"", grams, label;
+    const u=unit.replace(/s$/,"").replace(/^(tablespoon|tbsp)$/,"tbsp").replace(/^(teaspoon|tsp)$/,"tsp").replace(/^(gram|gr)$/,"g").replace(/^(kilo)$/,"kg").replace(/^(packet)$/,"pack").replace(/^boxe$/,"box").replace(/^(pc|piece)$/,"piece").replace(/^(millilitre|milliliter)$/,"ml").replace(/^(litre|liter)$/,"l");
+    if(qty==null){ const sv=food.piece||food.scoop||food.pack||food.can||food.bottle||food.box||food.cup||100; grams=sv; label=food.piece?"1":food.scoop?"1 scoop":food.pack?"1 pack":food.can?"1 can":food.bottle?"1 bottle":food.box?"1 box":food.cup?"1 cup":"100 g"; label+=" (assumed)"}
+    else if(u==="g"||u==="ml"){grams=qty;label=`${qty} ${u}`}
+    else if(u==="kg"||u==="l"){grams=qty*1000;label=`${qty} ${u}`}
+    else if(u&&food[u]){grams=qty*food[u];label=`${qty} ${u}${qty>1&&u!=="g"?"s":""}`.replace("boxs","boxes")}
+    else if(u==="tbsp"){grams=qty*15;label=`${qty} tbsp`} else if(u==="tsp"){grams=qty*5;label=`${qty} tsp`}
+    else if(u==="cup"){grams=qty*240;label=`${qty} cup${qty>1?"s":""}`}
+    else if(!u&&qty<=30){const per=food.piece||food.scoop||food.pack||food.can||food.bottle||food.box||food.slice; grams=per?qty*per:qty; label=per?`${qty}`:`${qty} g`}
+    else {grams=qty;label=`${qty} g`}
+    let k=grams/100;
+    if(food.meat){ if(/\b(cooked|boiled|grilled|fried|baked|steamed)\b/.test(part)&&qty!=null&&(u==="g"||u==="kg")){k*=1.35;label+=" cooked"} else if(u==="g"||u==="kg"||qty==null)label+=" raw" }
+    if(/\b(drained|no fat|fat drained)\b/.test(part)&&food.meat&&food.f>8){k*=1;}
+    items.push({name:food.name,amount:label,kcal:r0(food.kcal*k),p:r1(food.p*k),c:r1(food.c*k),f:r1(food.f*k),na:r0(food.na*k),sug:r1(food.sug*k)});
+  }
+  const note=unknown.length?`Not in the built-in food list yet: ${unknown.map(s=>`"${s}"`).join(", ")}. Add ${unknown.length>1?"those":"it"} with the Numbers tab.`:"";
+  return {items,note};
+}
+
 async function askText(text){
-  const s=await getSampler(); if(!s) throw {code:"offline"};
+  const s=await getSampler(); if(!s) return localNutrition(text);
   const out=await s.json(`You are a nutrition calculator for a calorie-tracking app. The user typed what they ate: "${text.slice(0,400)}".
 It may hold one or several ingredients with amounts (grams, ml, cups, tbsp, pieces like "2 eggs"). Compute each for exactly that amount.
 ${RULES}
@@ -684,7 +779,7 @@ function renderPanel(){
   const tabs=[["type","Type it"],["photo","Photo"],["num","Numbers"]];
   let body="";
   if(panel.tab==="type") body=`<form class="addline" id="typeForm" autocomplete="off"><input id="typeText" value="${esc(panel.text||"")}" placeholder="300 g pork mince, 2 eggs…" aria-label="What did you eat"><button class="btn primary" type="submit">Add</button></form>
-    <p class="hint">Type each food with its amount. Meat counts as raw weight, rice and noodles as cooked, unless you say otherwise.</p>`;
+    <p class="hint">Type each food with its amount, like "500 g minced pork, 2 eggs". Meat counts as raw weight, rice and noodles as cooked, unless you say otherwise.${ME?.ai?"":" Uses the built-in food list."}</p>`;
   else if(panel.tab==="photo") body=`<label class="photo ${scan.off?"off":""}">${scan.off?"Photo scanning needs the AI features turned on":scan.busy?"Looking at your photo…":"📷 Take or choose a photo"}
       <input id="photoInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif" capture="environment" ${scan.off||scan.busy?"disabled":""} aria-label="Take or choose a photo"></label>
     <input id="photoNote" value="${esc(scan.note)}" placeholder="Optional note: big portion, cooked in oil…" aria-label="Note about the photo">
@@ -890,7 +985,7 @@ $("profileForm").addEventListener("submit",e=>{
 /* ---------- boot ---------- */
 profile=local.get("profile");
 entries=local.get("log-"+day)||[];
-const savedPanel=local.get("panel"); if(savedPanel&&savedPanel.items?.length&&!savedPanel.edit){panel={...savedPanel,tab:"num"};panel.items.forEach(x=>{x.busy=false})}
+const savedPanel=local.get("panel"); if(savedPanel&&savedPanel.items?.length&&!savedPanel.edit){panel={...savedPanel,tab:"type"};panel.items.forEach(x=>{x.busy=false})}
 fillProfile(); render();
 scan.off=true;
 connect();
